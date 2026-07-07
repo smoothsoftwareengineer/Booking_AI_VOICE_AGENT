@@ -1,6 +1,6 @@
 import Link from "next/link";
-import VoiceCall from "@/components/VoiceCall";
 import BookingList from "@/components/BookingList";
+import VoiceCall from "@/components/VoiceCallLoader";
 
 export default function Home() {
   return (
