@@ -16,7 +16,7 @@ def list_bookings(db: Session = Depends(get_db)):
     return db.query(Booking).order_by(Booking.created_at.desc()).all()
 
 
-@router.post("/create", response_model=BookingResponse)
+@router.post("/create")
 async def create_booking_function(request: Request, db: Session = Depends(get_db)):
     """Custom function endpoint called by Retell AI during a call."""
     try:
@@ -24,6 +24,7 @@ async def create_booking_function(request: Request, db: Session = Depends(get_db
         signature = request.headers.get("X-Retell-Signature")
 
         if not verify_retell_signature(raw_body, signature):
+            print("Create booking rejected: invalid signature")
             return JSONResponse(status_code=401, content={"message": "Unauthorized"})
 
         post_data = json.loads(raw_body)
@@ -42,10 +43,18 @@ async def create_booking_function(request: Request, db: Session = Depends(get_db
         db.commit()
         db.refresh(booking)
 
-        return {
-            "result": f"Booking confirmed for {booking.caller_name} on {booking.preferred_date} at {booking.preferred_time}.",
-            "booking_id": booking.id,
-        }
+        print(f"Booking saved: id={booking.id} name={booking.caller_name} call_id={call_id}")
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "result": (
+                    f"Booking confirmed for {booking.caller_name} "
+                    f"on {booking.preferred_date} at {booking.preferred_time}."
+                ),
+                "booking_id": booking.id,
+            },
+        )
     except Exception as err:
         print(f"Create booking error: {err}")
         return JSONResponse(status_code=500, content={"message": "Internal Server Error"})
