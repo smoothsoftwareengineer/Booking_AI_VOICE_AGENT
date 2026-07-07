@@ -1,0 +1,21 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+:root {
+  --bg: #0b0f19;
+  --surface: #121826;
+  --border: #1f2937;
+  --text: #f3f4f6;
+  --muted: #9ca3af;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --success: #22c55e;
+  --danger: #ef4444;
+}
+
+body {
+  background: radial-gradient(circle at top, #1e1b4b 0%, var(--bg) 45%);
+  color: var(--text);
+  min-height: 100vh;
+}
