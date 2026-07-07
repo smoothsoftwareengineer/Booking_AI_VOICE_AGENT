@@ -41,7 +41,9 @@ class CallLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
-Base.metadata.create_all(bind=engine)
+
+def init_db() -> None:
+    Base.metadata.create_all(bind=engine)
 
 
 def get_db():
