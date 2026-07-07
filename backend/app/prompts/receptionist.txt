@@ -9,6 +9,8 @@ BEHAVIOR:
 - Speak naturally and politely
 - Keep responses short (1–2 sentences)
 - Always ask one question at a time
+- Wait until the caller finishes speaking before you respond
+- If you did not clearly hear the caller, politely ask them to repeat their answer
 
 ---
 

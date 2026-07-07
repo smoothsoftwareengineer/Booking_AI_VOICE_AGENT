@@ -1,11 +1,10 @@
 """
-Provision the Retell AI receptionist agent with LLM prompt and custom booking function.
+Update an existing Retell agent for better web call speech recognition.
 
 Usage:
   cd backend
-  pip install -r requirements.txt
-  cp .env.example .env   # fill in RETELL_API_KEY and WEBHOOK_BASE_URL
-  python -m scripts.setup_agent
+  .venv\Scripts\activate
+  python -m scripts.update_agent
 """
 from __future__ import annotations
 
@@ -23,16 +22,19 @@ PROMPT_PATH = Path(__file__).parent.parent / "app" / "prompts" / "receptionist.t
 
 def main() -> None:
     api_key = os.getenv("RETELL_API_KEY")
+    agent_id = os.getenv("RETELL_AGENT_ID")
+    llm_id = os.getenv("RETELL_LLM_ID")
     webhook_base = os.getenv("WEBHOOK_BASE_URL", "").rstrip("/")
-    voice_id = os.getenv("RETELL_VOICE_ID", "11labs-Adrian")
-    agent_name = os.getenv("RETELL_AGENT_NAME", "Service Business Receptionist")
 
     if not api_key:
         print("Error: RETELL_API_KEY is required")
         sys.exit(1)
-
-    if not webhook_base:
-        print("Warning: WEBHOOK_BASE_URL not set — custom function URL will be incomplete")
+    if not agent_id:
+        print("Error: RETELL_AGENT_ID is required")
+        sys.exit(1)
+    if not llm_id:
+        print("Error: RETELL_LLM_ID is required")
+        sys.exit(1)
 
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     client = Retell(api_key=api_key)
@@ -61,28 +63,29 @@ def main() -> None:
         },
     ]
 
-    llm = client.llm.create(
+    client.llm.update(
+        llm_id,
         general_prompt=prompt,
         general_tools=general_tools,
         begin_message="Hello! Thank you for calling. May I have your name please?",
     )
-    print(f"Created LLM: {llm.llm_id}")
+    print(f"Updated LLM: {llm_id}")
 
-    agent = client.agent.create(
-        response_engine={"type": "retell-llm", "llm_id": llm.llm_id},
-        voice_id=voice_id,
-        agent_name=agent_name,
-        webhook_url=f"{webhook_base}/webhook" if webhook_base else None,
+    client.agent.update(
+        agent_id,
         responsiveness=0.85,
         interruption_sensitivity=0.65,
         denoising_mode="noise-cancellation",
         begin_message_delay_ms=800,
-        boosted_keywords=["booking", "appointment", "support", "inquiry"],
+        boosted_keywords=["Allan", "booking", "appointment", "support", "inquiry"],
+        webhook_url=f"{webhook_base}/webhook" if webhook_base else None,
     )
-    print(f"Created Agent: {agent.agent_id}")
-    print(f"\nAdd to your .env files:")
-    print(f"  RETELL_AGENT_ID={agent.agent_id}")
-    print(f"  RETELL_LLM_ID={llm.llm_id}")
+    print(f"Updated Agent: {agent_id}")
+    print("Speech settings applied:")
+    print("  responsiveness=0.85")
+    print("  interruption_sensitivity=0.65")
+    print("  begin_message_delay_ms=800")
+    print("  denoising_mode=noise-cancellation")
 
 
 if __name__ == "__main__":
