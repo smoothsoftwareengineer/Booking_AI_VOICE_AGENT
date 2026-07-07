@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const VoiceCall = dynamic(() => import("@/components/VoiceCall"), {
   ssr: false,
@@ -11,4 +12,10 @@ const VoiceCall = dynamic(() => import("@/components/VoiceCall"), {
   ),
 });
 
-export default VoiceCall;
+export default function VoiceCallLoader() {
+  return (
+    <ErrorBoundary>
+      <VoiceCall />
+    </ErrorBoundary>
+  );
+}

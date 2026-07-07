@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { formatTranscript } from "@/lib/transcript";
 
 type CallStatus = "idle" | "connecting" | "active" | "ended" | "error";
 type RetellClient = {
@@ -11,6 +12,7 @@ type RetellClient = {
 
 export default function VoiceCall() {
   const clientRef = useRef<RetellClient | null>(null);
+  const mountedRef = useRef(true);
   const [status, setStatus] = useState<CallStatus>("idle");
   const [transcript, setTranscript] = useState<string>("");
   const [agentSpeaking, setAgentSpeaking] = useState(false);
@@ -18,42 +20,59 @@ export default function VoiceCall() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
     async function initClient() {
       try {
         const { RetellWebClient } = await import("retell-client-js-sdk");
-        if (!mounted) return;
+        if (!mountedRef.current) return;
 
         const client = new RetellWebClient();
         clientRef.current = client;
 
-        client.on("call_started", () => setStatus("active"));
-        client.on("call_ended", () => setStatus("ended"));
-        client.on("agent_start_talking", () => setAgentSpeaking(true));
-        client.on("agent_stop_talking", () => setAgentSpeaking(false));
-        client.on("update", (update: { transcript?: string }) => {
-          if (update.transcript) setTranscript(update.transcript);
+        const safe = <T,>(setter: (value: T) => void, value: T) => {
+          if (mountedRef.current) setter(value);
+        };
+
+        client.on("call_started", () => safe(setStatus, "active"));
+        client.on("call_ended", () => safe(setStatus, "ended"));
+        client.on("agent_start_talking", () => safe(setAgentSpeaking, true));
+        client.on("agent_stop_talking", () => safe(setAgentSpeaking, false));
+        client.on("update", (update: unknown) => {
+          try {
+            const payload = update as { transcript?: unknown };
+            if (payload.transcript) {
+              safe(setTranscript, formatTranscript(payload.transcript));
+            }
+          } catch (err) {
+            console.error("Transcript update error:", err);
+          }
         });
         client.on("error", (err: unknown) => {
           console.error(err);
-          setError("Call error occurred");
-          setStatus("error");
+          safe(setError, "Call error occurred");
+          safe(setStatus, "error");
         });
 
-        setReady(true);
+        safe(setReady, true);
       } catch (err) {
         console.error("Failed to load voice SDK:", err);
-        setError("Voice SDK failed to load");
-        setStatus("error");
+        if (mountedRef.current) {
+          setError("Voice SDK failed to load");
+          setStatus("error");
+        }
       }
     }
 
     initClient();
 
     return () => {
-      mounted = false;
-      clientRef.current?.stopCall();
+      mountedRef.current = false;
+      try {
+        clientRef.current?.stopCall();
+      } catch (err) {
+        console.error("Stop call cleanup error:", err);
+      }
       clientRef.current = null;
     };
   }, []);
@@ -84,7 +103,11 @@ export default function VoiceCall() {
   }, []);
 
   const stopCall = useCallback(() => {
-    clientRef.current?.stopCall();
+    try {
+      clientRef.current?.stopCall();
+    } catch (err) {
+      console.error("Stop call error:", err);
+    }
     setStatus("ended");
   }, []);
 
@@ -134,7 +157,7 @@ export default function VoiceCall() {
       </div>
 
       {transcript && (
-        <div className="mb-6 max-h-40 overflow-y-auto rounded-lg bg-black/30 p-4 text-sm leading-relaxed text-[var(--muted)]">
+        <div className="mb-6 max-h-40 overflow-y-auto whitespace-pre-line rounded-lg bg-black/30 p-4 text-sm leading-relaxed text-[var(--muted)]">
           {transcript}
         </div>
       )}
