@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatTranscript } from "@/lib/transcript";
+import { requestBookingsRefresh } from "@/lib/bookings";
 
 type CallStatus = "idle" | "connecting" | "active" | "ended" | "error";
 type RetellClient = {
@@ -34,8 +35,14 @@ export default function VoiceCall() {
           if (mountedRef.current) setter(value);
         };
 
-        client.on("call_started", () => safe(setStatus, "active"));
-        client.on("call_ended", () => safe(setStatus, "ended"));
+        client.on("call_started", () => {
+          safe(setStatus, "active");
+          requestBookingsRefresh();
+        });
+        client.on("call_ended", () => {
+          safe(setStatus, "ended");
+          requestBookingsRefresh();
+        });
         client.on("agent_start_talking", () => safe(setAgentSpeaking, true));
         client.on("agent_stop_talking", () => safe(setAgentSpeaking, false));
         client.on("update", (update: unknown) => {
@@ -44,6 +51,7 @@ export default function VoiceCall() {
             if (payload.transcript) {
               safe(setTranscript, formatTranscript(payload.transcript));
             }
+            requestBookingsRefresh();
           } catch (err) {
             console.error("Transcript update error:", err);
           }
@@ -109,6 +117,7 @@ export default function VoiceCall() {
       console.error("Stop call error:", err);
     }
     setStatus("ended");
+    requestBookingsRefresh();
   }, []);
 
   const isActive = status === "active" || status === "connecting";
